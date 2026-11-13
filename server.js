@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost', user: process.env.DB_USER || 'gracewong', password: process.env.DB_PASS || 'Grace@19751113',
+    host: process.env.DB_HOST || 'localhost', port: parseInt(process.env.DB_PORT) || 3306, user: process.env.DB_USER || 'gracewong', password: process.env.DB_PASS || 'Grace@19751113',
     database: process.env.DB_NAME || 'grace_exercise', charset:'utf8mb4',
     waitForConnections:true, connectionLimit:10
 });
@@ -28,7 +28,6 @@ function reqLogin(req,res,next){if(!isLoggedIn(req))return res.redirect('/login.
 function reqAdmin(req,res,next){if(!isLoggedIn(req))return res.redirect('/login.html');if(!isAdm(req))return res.redirect('/dashboard.html');next();}
 function reqLoginAPI(req,res,next){if(!isLoggedIn(req))return res.json({ok:false,error:'Not logged in'});next();}
 
-// Protected pages
 app.get('/exercise.html', reqLogin, (req,res)=>{
     if(isAdm(req)) return res.redirect('/admin.html');
     res.sendFile(path.join(__dirname,'public','exercise.html'));
@@ -46,10 +45,7 @@ app.get('/', (req,res)=>{
     else res.redirect('/login.html');
 });
 
-// Static files (login.html, register.html, style.css etc.)
 app.use(express.static(path.join(__dirname,'public')));
-
-// ====== API ======
 
 app.get('/api/me', (req,res)=>{
     if(!isLoggedIn(req)) return res.json({loggedIn:false});
@@ -63,7 +59,6 @@ app.post('/api/login', async(req,res)=>{
         const [rows]=await pool.execute('SELECT * FROM users WHERE username=?',[username]);
         if(!rows.length) return res.json({ok:false,error:'Invalid username or password.'});
         const user=rows[0];
-        // PHP bcrypt compat: $2y$ -> $2a$
         let hash=user.password;
         if(hash.startsWith('$2y$')) hash='$2a$'+hash.slice(4);
         const match=await bcrypt.compare(password,hash);
@@ -77,7 +72,7 @@ app.post('/api/login', async(req,res)=>{
 app.post('/api/register', async(req,res)=>{
     try{
         const {username,display_name,password,password2,class_name}=req.body;
-        if(!username||username.length<3||username.length>30) return res.json({ok:false,error:'Username must be 3–30 characters.'});
+        if(!username||username.length<3||username.length>30) return res.json({ok:false,error:'Username must be 3-30 characters.'});
         if(!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ok:false,error:'Username: letters, numbers, underscores only.'});
         if(!display_name||display_name.length<2) return res.json({ok:false,error:'Display name must be at least 2 characters.'});
         if(!password||password.length<6) return res.json({ok:false,error:'Password must be at least 6 characters.'});
@@ -246,7 +241,6 @@ app.post('/api/get-student-detail', reqLoginAPI, async(req,res)=>{
     }catch(e){console.error(e);res.json({ok:false,error:'Server error'});}
 });
 
-// Messages
 app.post('/api/send-message', reqLoginAPI, async(req,res)=>{
     try{
         let {receiverId,subject,body}=req.body;
@@ -276,4 +270,4 @@ app.get('/api/students-list', reqLoginAPI, async(req,res)=>{
     res.json({ok:true,contacts:s});
 });
 
-app.listen(PORT, ()=>console.log(`✅ Grace Exercise Server running on port ${PORT}`));
+app.listen(PORT, ()=>console.log(`Grace Exercise Server running on port ${PORT}`));
