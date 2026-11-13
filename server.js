@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const pool = mysql.createPool({
-    host:'localhost', user:'gracewong', password:'Grace@19751113',
-    database:'grace_exercise', charset:'utf8mb4',
+    host: process.env.DB_HOST || 'localhost', user: process.env.DB_USER || 'gracewong', password: process.env.DB_PASS || 'Grace@19751113',
+    database: process.env.DB_NAME || 'grace_exercise', charset:'utf8mb4',
     waitForConnections:true, connectionLimit:10
 });
 
