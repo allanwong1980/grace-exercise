@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Results</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="topnav" id="topnav"></nav>
+<div class="dashboard-container" id="app"><div style="text-align:center;padding:60px"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#4A6FA5"></i></div></div>
+<script>
+const B='/grace';
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+async function logout(){await fetch(B+'/api/logout',{method:'POST'});window.location.href=B+'/login.html';}
+async function init(){
+    const meR=await fetch(B+'/api/me');const me=await meR.json();
+    if(!me.loggedIn){window.location.href=B+'/login.html';return;}
+    document.getElementById('topnav').innerHTML='<div class="nav-left"><a href="'+B+'/dashboard.html" class="nav-brand"><i class="fas fa-book-open"></i> Pronoun Practice</a></div><div class="nav-right"><span class="nav-user"><i class="fas fa-user-circle"></i> '+esc(me.displayName)+'</span><a href="'+B+'/exercise.html" class="nav-link">Exercise</a><a href="'+B+'/dashboard.html" class="nav-link">My Results</a><a href="'+B+'/messages.html" class="nav-link"><i class="fas fa-envelope"></i></a><a href="#" class="nav-link nav-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></div>';
+    const resp=await fetch(B+'/api/dashboard-data');const D=await resp.json();
+    if(!D.ok)return;
+    if(!D.isSubmitted){
+        document.getElementById('app').innerHTML='<div class="card card-warning"><h2><i class="fas fa-exclamation-triangle"></i> Exercise Not Yet Submitted</h2><p>You haven\'t submitted your answers yet.</p><a href="'+B+'/exercise.html" class="btn btn-primary"><i class="fas fa-pen"></i> Go to Exercise</a></div>';return;
+    }
+    const pct=Math.round(D.myScore/D.totalQ*100);
+    const subDate=D.submittedAt?new Date(D.submittedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+    let resultsHtml='';
+    for(let qn=1;qn<=D.totalQ;qn++){
+        const qi=D.questionInfo[qn];const a=D.myAnswers[qn];const correct=a?a.is_correct:0;
+        let studentAns=a?esc(a.answer):'<em>Not answered</em>';let correctAns;
+        if(qi.type==='former_latter'){studentAns='Former: '+esc(a?a.answer:'')+'<br>Latter: '+esc(a?a.answer2:'');correctAns='Former: '+esc(qi.answer_former)+'<br>Latter: '+esc(qi.answer_latter);}
+        else correctAns=esc(qi.answer);
+        resultsHtml+='<div class="result-item '+(correct?'correct':'wrong')+'"><div class="result-icon">'+(correct?'<i class="fas fa-check-circle"></i>':'<i class="fas fa-times-circle"></i>')+'</div><div class="result-body"><div class="result-qnum">Q'+qn+' <span class="result-pronoun">('+esc(qi.pronoun)+')</span></div><div class="result-answer"><strong>Your answer:</strong> '+studentAns+'</div>'+(!correct?'<div class="result-correct"><strong>Correct:</strong> '+correctAns+'</div>':'')+'</div><div class="result-score">'+(correct?'1':'0')+'/1</div></div>';
+    }
+    let lbHtml='';
+    D.classStats.forEach((s,i)=>{const rank=i+1;const isMe=s.id===me.userId;const showName=(rank<=5||isMe);const name=showName?esc(s.display_name):'—';const medal=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+        lbHtml+='<tr class="'+(isMe?'lb-me':'')+' '+(rank<=3?'lb-top':'')+'"><td>'+medal+'</td><td>'+name+(isMe?' <span class="me-badge">YOU</span>':'')+'</td><td><strong>'+s.total_score+'</strong>/'+D.totalQ+'</td><td>'+Math.round(s.total_score/D.totalQ*100)+'%</td></tr>';
+    });
+    document.getElementById('app').innerHTML='<div class="score-overview"><div class="score-card score-main"><div class="score-icon"><i class="fas fa-trophy"></i></div><div class="score-value">'+D.myScore+'/'+D.totalQ+'</div><div class="score-label">Your Score</div><div class="score-percent">'+pct+'%</div></div><div class="score-card"><div class="score-icon"><i class="fas fa-users"></i></div><div class="score-value">'+D.classAvg+'/'+D.totalQ+'</div><div class="score-label">Class Average</div></div><div class="score-card"><div class="score-icon"><i class="fas fa-medal"></i></div><div class="score-value">#'+D.myRank+'</div><div class="score-label">Your Rank</div><div class="score-sublabel">out of '+D.classStats.length+'</div></div><div class="score-card"><div class="score-icon"><i class="fas fa-clock"></i></div><div class="score-value" style="font-size:16px">'+subDate+'</div><div class="score-label">Submitted</div></div></div><div class="tab-bar"><button class="tab-btn active" onclick="showTab(\'results\',this)"><i class="fas fa-list-check"></i> My Answers</button><button class="tab-btn" onclick="showTab(\'lb\',this)"><i class="fas fa-ranking-star"></i> Leaderboard</button></div><div class="tab-content" id="tab-results"><div class="results-list">'+resultsHtml+'</div></div><div class="tab-content" id="tab-lb" style="display:none"><div class="leaderboard"><table class="lb-table"><thead><tr><th>#</th><th>Student</th><th>Score</th><th>%</th></tr></thead><tbody>'+lbHtml+'</tbody></table><div class="lb-footer">Class Average: <strong>'+D.classAvg+'/'+D.totalQ+'</strong> ('+Math.round(D.classAvg/D.totalQ*100)+'%) | Total: <strong>'+D.classStats.length+'</strong></div></div></div>';
+}
+function showTab(name,btn){document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+name).style.display='block';btn.classList.add('active');}
+init();
+</script>
+</body></html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="topnav" id="topnav"></nav>
+<div class="dashboard-container admin-dashboard" id="app"><div style="text-align:center;padding:60px"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#4A6FA5"></i></div></div>
+<script>
+const B='/grace';
+let AD=null,ME=null;
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+async function logout(){await fetch(B+'/api/logout',{method:'POST'});window.location.href=B+'/login.html';}
+
+async function init(){
+    const meR=await fetch(B+'/api/me');ME=await meR.json();
+    if(!ME.loggedIn||ME.role!=='admin'){window.location.href=B+'/login.html';return;}
+    document.getElementById('topnav').innerHTML='<div class="nav-left"><a href="'+B+'/admin.html" class="nav-brand"><i class="fas fa-book-open"></i> Pronoun Practice</a></div><div class="nav-right"><span class="nav-user"><i class="fas fa-user-circle"></i> '+esc(ME.displayName)+'</span><a href="'+B+'/admin.html" class="nav-link">Dashboard</a><a href="'+B+'/messages.html" class="nav-link"><i class="fas fa-envelope"></i></a><a href="#" class="nav-link nav-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></div>';
+    await loadAdmin();
+}
+
+async function loadAdmin(){
+    const resp=await fetch(B+'/api/admin-data');AD=await resp.json();if(!AD.ok)return;
+    const notSub=AD.students.length-AD.submittedCount;
+    const submitted=AD.students.filter(s=>s.is_submitted).sort((a,b)=>b.total_score-a.total_score);
+    let sbHtml='';
+    submitted.forEach((s,i)=>{const rank=i+1;const medal=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+        sbHtml+='<tr class="'+(rank<=3?'lb-top':'')+'"><td>'+medal+'</td><td>'+esc(s.display_name)+'</td><td><strong>'+s.total_score+'</strong>/'+AD.totalQ+'</td><td>'+Math.round(s.total_score/AD.totalQ*100)+'%</td><td>'+(s.submitted_at?new Date(s.submitted_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—')+'</td></tr>';
+    });
+    const eaArr=Object.entries(AD.errorAnalysis).sort((a,b)=>b[1].rate-a[1].rate);
+    let eaHtml='';
+    eaArr.forEach(([qn,ea])=>{const qi=AD.questionInfo[qn];const bc=ea.rate>50?'#e74c3c':ea.rate>25?'#f39c12':'#2ecc71';
+        const wrongCounts={};ea.wrongAnswers.forEach(w=>{const k=w.answer.toLowerCase();wrongCounts[k]=(wrongCounts[k]||0)+1;});
+        const topWrong=Object.entries(wrongCounts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+        let wHtml=topWrong.map(([w,c])=>'<div class="wrong-ans-item">'+esc(w)+' <span class="wrong-cnt">(x'+c+')</span></div>').join('');
+        if(!wHtml)wHtml='<span class="text-muted">—</span>';
+        eaHtml+='<tr><td><strong>Q'+qn+'</strong></td><td><em>'+esc(qi.pronoun)+'</em></td><td><span class="type-badge">'+qi.type+'</span></td><td><div class="error-bar-wrap"><div class="error-bar" style="width:'+ea.rate+'%;background:'+bc+'"></div><span>'+ea.rate+'%</span></div></td><td>'+ea.wrong+'/'+ea.total+'</td><td class="wrong-answers-cell">'+wHtml+'</td></tr>';
+    });
+    let stHtml='';
+    AD.students.forEach(s=>{
+        stHtml+='<tr><td>'+esc(s.display_name)+'</td><td><code>'+esc(s.username)+'</code></td><td>'+(s.is_submitted?'<span class="badge-green">Submitted</span>':'<span class="badge-gray">Pending</span>')+'</td><td class="action-btns"><input type="text" id="rp_'+s.id+'" placeholder="New pwd" style="width:80px"><button class="btn-sm btn-warning" onclick="resetPwd('+s.id+')"><i class="fas fa-key"></i></button>'+(s.is_submitted?'<button class="btn-sm btn-danger" onclick="resetSub('+s.id+')" title="Reset submission"><i class="fas fa-redo"></i></button>':'')+'<button class="btn-sm btn-danger" onclick="delStudent('+s.id+')" title="Delete"><i class="fas fa-trash"></i></button></td></tr>';
+    });
+    let sdOpts='<option value="">— Choose —</option>';
+    submitted.forEach(s=>{sdOpts+='<option value="'+s.id+'">'+esc(s.display_name)+' ('+s.total_score+'/'+AD.totalQ+')</option>';});
+    document.getElementById('app').innerHTML='<div id="adminMsg"></div><div class="score-overview"><div class="score-card"><div class="score-icon"><i class="fas fa-users"></i></div><div class="score-value">'+AD.students.length+'</div><div class="score-label">Total Students</div></div><div class="score-card"><div class="score-icon"><i class="fas fa-paper-plane"></i></div><div class="score-value">'+AD.submittedCount+'</div><div class="score-label">Submitted</div></div><div class="score-card"><div class="score-icon"><i class="fas fa-chart-line"></i></div><div class="score-value">'+AD.classAvg+'/'+AD.totalQ+'</div><div class="score-label">Class Average</div><div class="score-sublabel">'+Math.round(AD.classAvg/AD.totalQ*100)+'%</div></div><div class="score-card"><div class="score-icon"><i class="fas fa-hourglass-half"></i></div><div class="score-value">'+notSub+'</div><div class="score-label">Not Submitted</div></div></div><div class="tab-bar"><button class="tab-btn active" onclick="showATab(\'scoreboard\',this)"><i class="fas fa-ranking-star"></i> Scoreboard</button><button class="tab-btn" onclick="showATab(\'errors\',this)"><i class="fas fa-bug"></i> Error Analysis</button><button class="tab-btn" onclick="showATab(\'students\',this)"><i class="fas fa-user-graduate"></i> Student Details</button><button class="tab-btn" onclick="showATab(\'manage\',this)"><i class="fas fa-cog"></i> Manage Users</button><a href="'+B+'/manual.html" class="tab-btn" style="text-decoration:none"><i class="fas fa-book"></i> Manual</a></div><div class="tab-content" id="atab-scoreboard"><h3>Class Scoreboard</h3><table class="admin-table"><thead><tr><th>#</th><th>Student</th><th>Score</th><th>%</th><th>Submitted</th></tr></thead><tbody>'+sbHtml+'</tbody></table>'+(!submitted.length?'<p class="empty-state"><i class="fas fa-inbox"></i> No submissions yet.</p>':'')+'</div><div class="tab-content" id="atab-errors" style="display:none"><h3>Questions by Error Rate</h3><table class="admin-table"><thead><tr><th>Q#</th><th>Pronoun</th><th>Type</th><th>Error Rate</th><th>Wrong/Total</th><th>Common Wrong</th></tr></thead><tbody>'+eaHtml+'</tbody></table></div><div class="tab-content" id="atab-students" style="display:none"><h3>Individual Student Answers</h3><div class="student-selector"><label>Select:</label> <select id="sdSelect" onchange="loadSD(this.value)">'+sdOpts+'</select></div><div id="sdDetail"></div></div><div class="tab-content" id="atab-manage" style="display:none"><div class="manage-grid"><div class="card"><h3><i class="fas fa-user-plus"></i> Add Student</h3><div class="form-group"><label>Username</label><input type="text" id="nu_user"></div><div class="form-group"><label>Display Name</label><input type="text" id="nu_name"></div><div class="form-group"><label>Password</label><input type="text" id="nu_pass"></div><button class="btn btn-primary" onclick="addStudent()"><i class="fas fa-plus"></i> Add</button></div><div class="card"><h3><i class="fas fa-list"></i> All Students</h3><table class="admin-table compact"><thead><tr><th>Name</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+stHtml+'</tbody></table></div></div></div>';
+}
+
+function showATab(name,btn){document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('atab-'+name).style.display='block';if(btn)btn.classList.add('active');}
+function showMsg(msg){const m=document.getElementById('adminMsg');m.innerHTML='<div class="alert alert-success"><i class="fas fa-check-circle"></i> '+esc(msg)+'</div>';setTimeout(()=>m.innerHTML='',3000);}
+
+async function adminAction(body){const r=await fetch(B+'/api/admin-action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(d.ok){showMsg(d.msg);await loadAdmin();}else alert(d.error||'Error');}
+async function addStudent(){const u=document.getElementById('nu_user').value,n=document.getElementById('nu_name').value,p=document.getElementById('nu_pass').value;if(!u||!n||!p){alert('All fields required');return;}await adminAction({action:'add_student',username:u,displayName:n,password:p});}
+async function resetPwd(id){const p=document.getElementById('rp_'+id).value;if(!p){alert('Enter new password');return;}if(!confirm('Reset password?'))return;await adminAction({action:'reset_password',studentId:id,newPassword:p});}
+async function resetSub(id){if(!confirm('Reset submission? Cannot undo!'))return;await adminAction({action:'reset_submission',studentId:id});}
+async function delStudent(id){if(!confirm('DELETE this student? Cannot undo!'))return;await adminAction({action:'delete_student',studentId:id});}
+
+async function loadSD(uid){
+    if(!uid){document.getElementById('sdDetail').innerHTML='';return;}
+    const r=await fetch(B+'/api/get-student-detail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentId:uid})});
+    const d=await r.json();if(!d.ok)return;
+    let html='<table class="admin-table"><thead><tr><th>Q#</th><th>Pronoun</th><th>Student Answer</th><th>Correct</th><th>Result</th><th>Override</th></tr></thead><tbody>';
+    d.answers.forEach(a=>{html+='<tr class="'+(a.is_correct?'':'row-wrong')+'"><td><strong>Q'+a.qnum+'</strong></td><td><em>'+esc(a.pronoun)+'</em></td><td>'+(esc(a.student_answer)||'<em>—</em>')+'</td><td>'+esc(a.correct_answer)+'</td><td>'+(a.is_correct?'✅':'❌')+'</td><td><button class="btn-sm '+(a.is_correct?'btn-danger':'btn-success')+'" onclick="override('+uid+','+a.qnum+','+(a.is_correct?0:1)+')">'+(a.is_correct?'Mark Wrong':'Mark Correct')+'</button></td></tr>';});
+    html+='</tbody></table>';document.getElementById('sdDetail').innerHTML=html;
+}
+async function override(uid,qn,ns){await adminAction({action:'override_score',studentId:uid,questionNum:qn,newScore:ns});loadSD(uid);}
+init();
+</script>
+</body></html>

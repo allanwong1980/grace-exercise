@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Teacher Manual</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>.manual-main{max-width:900px;margin:0 auto;padding:20px}.manual-section{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:32px;margin-bottom:24px}.manual-section h2{font-size:22px;color:#344E78;margin-bottom:16px}.manual-section p{font-size:14px;line-height:1.8;margin-bottom:12px}.cred-box{background:#2C3E50;color:#ECF0F1;border-radius:10px;padding:20px;font-family:monospace;margin:16px 0}.cred-box .cred-label{font-size:11px;color:#95A5A6;text-transform:uppercase}.cred-box .cred-value{font-size:18px;font-weight:700;color:#2ECC71;margin-bottom:10px}.warning-card{background:#FDE8E8;border:1px solid #E74C3C;border-radius:10px;padding:16px;margin:16px 0;display:flex;gap:12px}.warning-card i{color:#E74C3C;font-size:20px}.warning-card p{margin:0;font-size:13px;line-height:1.7}.tip-card{background:#FFF9E6;border:1px solid #F39C12;border-radius:10px;padding:16px;margin:16px 0;display:flex;gap:12px}.tip-card i{color:#F39C12;font-size:20px}.tip-card p{margin:0;font-size:13px;line-height:1.7}.manual-hero{background:linear-gradient(135deg,#4A6FA5,#344E78);border-radius:12px;padding:40px 32px;margin-bottom:24px;color:#fff}.manual-hero h1{font-size:28px;margin-bottom:8px}.manual-hero p{color:rgba(255,255,255,.8);margin:0}</style>
+</head>
+<body>
+<nav class="topnav" id="topnav"></nav>
+<div class="manual-main">
+<div class="manual-hero"><h1><i class="fas fa-book"></i> Teacher User Manual</h1><p>Complete guide to the admin dashboard</p></div>
+<section class="manual-section"><h2>1. Login</h2><div class="cred-box"><div class="cred-label">URL</div><div class="cred-value">login.html</div><div class="cred-label">Username</div><div class="cred-value">teacher</div><div class="cred-label">Password</div><div class="cred-value">Admin@123</div></div></section>
+<section class="manual-section"><h2>2. Dashboard Overview</h2><p>Four summary cards: <strong>Total Students</strong>, <strong>Submitted</strong>, <strong>Class Average</strong>, <strong>Not Submitted</strong>.</p><p>Four tabs: Scoreboard, Error Analysis, Student Details, Manage Users.</p></section>
+<section class="manual-section"><h2>3. Scoreboard</h2><p>Ranked table of submitted students. 🥇🥈🥉 for top 3.</p></section>
+<section class="manual-section"><h2>4. Error Analysis</h2><p>Questions ranked by error rate. <span style="color:#2ECC71">Green ≤25%</span>, <span style="color:#F39C12">Orange 26-50%</span>, <span style="color:#E74C3C">Red >50%</span>.</p></section>
+<section class="manual-section"><h2>5. Student Details &amp; Score Override</h2><p>Select a student to view answers. Use <strong>Mark Correct / Mark Wrong</strong> to override auto-grading. Total recalculates automatically.</p></section>
+<section class="manual-section"><h2>6. Manage Users</h2><p>Add students, reset passwords (🔑), reset submissions (🔄), delete accounts (🗑️).</p><div class="warning-card"><i class="fas fa-exclamation-triangle"></i><p>Reset and Delete are <strong>permanent</strong>.</p></div></section>
+<section class="manual-section"><h2>7. Messages</h2><p>Click envelope → select student → type message → send. Students can only message the teacher.</p></section>
+<section class="manual-section"><h2>8. Student Self-Registration</h2><p>Students click "Create New Account" on login page. All accounts appear in Manage Users.</p></section>
+</div>
+<script>
+const B='/grace';
+async function init(){const r=await fetch(B+'/api/me');const me=await r.json();if(!me.loggedIn||me.role!=='admin'){window.location.href=B+'/login.html';return;}
+document.getElementById('topnav').innerHTML='<div class="nav-left"><a href="'+B+'/admin.html" class="nav-brand"><i class="fas fa-book-open"></i> Pronoun Practice</a></div><div class="nav-right"><span class="nav-user"><i class="fas fa-user-circle"></i> '+me.displayName+'</span><a href="'+B+'/admin.html" class="nav-link">Dashboard</a><a href="'+B+'/messages.html" class="nav-link"><i class="fas fa-envelope"></i></a><a href="#" class="nav-link nav-logout" onclick="fetch(B+\'/api/logout\',{method:\'POST\'}).then(()=>location.href=B+\'/login.html\')"><i class="fas fa-sign-out-alt"></i> Logout</a></div>';}
+init();
+</script>
+</body></html>

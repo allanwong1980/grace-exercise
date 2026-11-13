@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Messages</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="topnav" id="topnav"></nav>
+<div class="dashboard-container" id="app"><div style="text-align:center;padding:60px"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#4A6FA5"></i></div></div>
+<script>
+const B='/grace';
+let ME=null,currentReceiver=0;
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+async function logout(){await fetch(B+'/api/logout',{method:'POST'});window.location.href=B+'/login.html';}
+
+async function init(){
+    const meR=await fetch(B+'/api/me');ME=await meR.json();
+    if(!ME.loggedIn){window.location.href=B+'/login.html';return;}
+    const isAdm=ME.role==='admin';
+    document.getElementById('topnav').innerHTML='<div class="nav-left"><a href="'+(isAdm?B+'/admin.html':B+'/dashboard.html')+'" class="nav-brand"><i class="fas fa-book-open"></i> Pronoun Practice</a></div><div class="nav-right"><span class="nav-user"><i class="fas fa-user-circle"></i> '+esc(ME.displayName)+'</span>'+(isAdm?'<a href="'+B+'/admin.html" class="nav-link">Dashboard</a>':'<a href="'+B+'/exercise.html" class="nav-link">Exercise</a><a href="'+B+'/dashboard.html" class="nav-link">My Results</a>')+'<a href="'+B+'/messages.html" class="nav-link"><i class="fas fa-envelope"></i></a><a href="#" class="nav-link nav-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></div>';
+    const cR=await fetch(B+'/api/students-list');const cD=await cR.json();
+    let sideHtml='<h4>'+(isAdm?'Students':'Chat with Teacher')+'</h4>';
+    if(isAdm){
+        sideHtml+='<select id="msgSelect" onchange="loadConvo(this.value)"><option value="">— Select Student —</option>';
+        cD.contacts.forEach(c=>{sideHtml+='<option value="'+c.id+'">'+esc(c.display_name)+'</option>';});
+        sideHtml+='</select>';
+    } else {
+        const t=cD.contacts[0];
+        sideHtml+='<div class="msg-contact active" onclick="loadConvo('+t.id+')"><i class="fas fa-chalkboard-teacher"></i> '+esc(t.display_name)+'</div>';
+        setTimeout(()=>loadConvo(t.id),100);
+    }
+    document.getElementById('app').innerHTML='<h2><i class="fas fa-envelope"></i> Messages</h2><div class="msg-layout"><div class="msg-sidebar">'+sideHtml+'</div><div class="msg-main"><div class="msg-thread" id="msgThread"><div class="msg-empty"><i class="fas fa-comments"></i><br>Select a conversation</div></div><div class="msg-compose" id="msgCompose" style="display:none"><input type="text" id="msgSubject" placeholder="Subject (optional)" class="msg-subject-input"><div class="msg-input-row"><textarea id="msgBody" placeholder="Type your message..." rows="2"></textarea><button class="btn btn-primary" onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button></div></div></div></div>';
+    document.getElementById('msgBody')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+}
+async function loadConvo(uid){
+    if(!uid)return;currentReceiver=parseInt(uid);
+    document.getElementById('msgCompose').style.display='block';
+    const r=await fetch(B+'/api/messages');const d=await r.json();if(!d.ok)return;
+    const msgs=d.messages.filter(m=>(m.sender_id==uid&&m.receiver_id==ME.userId)||(m.sender_id==ME.userId&&m.receiver_id==uid)).reverse();
+    const thread=document.getElementById('msgThread');
+    if(!msgs.length){thread.innerHTML='<div class="msg-empty"><i class="fas fa-comment-dots"></i><br>No messages yet.</div>';return;}
+    let html='';
+    msgs.forEach(m=>{const isMe=m.sender_id==ME.userId;const time=new Date(m.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        html+='<div class="msg-bubble '+(isMe?'msg-me':'msg-other')+'"><div class="msg-sender">'+esc(m.sender_name)+'</div>'+(m.subject?'<div class="msg-subj">'+esc(m.subject)+'</div>':'')+'<div class="msg-body-text">'+esc(m.body).replace(/\n/g,'<br>')+'</div><div class="msg-time">'+time+'</div></div>';
+        if(!isMe&&!m.is_read) fetch(B+'/api/read-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId:m.id})});
+    });
+    thread.innerHTML=html;thread.scrollTop=thread.scrollHeight;
+}
+async function sendMsg(){
+    const body=document.getElementById('msgBody').value.trim();const subject=document.getElementById('msgSubject').value.trim();
+    if(!body){alert('Please type a message.');return;}
+    await fetch(B+'/api/send-message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiverId:currentReceiver,subject,body})});
+    document.getElementById('msgBody').value='';document.getElementById('msgSubject').value='';loadConvo(currentReceiver);
+}
+init();
+</script>
+</body></html>

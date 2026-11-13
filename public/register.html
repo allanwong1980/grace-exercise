@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Register — Pronoun Referencing Practice</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="login-body">
+<div class="login-container">
+  <div class="login-hero">
+    <i class="fas fa-user-plus login-icon"></i>
+    <h1>Create Your<br>Account</h1>
+    <p>Join the Pronoun Referencing Practice</p>
+    <div class="login-features">
+      <div><i class="fas fa-check-circle"></i> Choose your own username</div>
+      <div><i class="fas fa-check-circle"></i> Set your own password</div>
+      <div><i class="fas fa-check-circle"></i> Start practising immediately</div>
+      <div><i class="fas fa-check-circle"></i> Track your progress</div>
+    </div>
+  </div>
+  <div class="login-form-section">
+    <h2><i class="fas fa-user-plus"></i> Register</h2>
+    <div id="errorMsg" class="alert alert-error" style="display:none"></div>
+    <div id="successMsg" class="alert alert-success" style="display:none"></div>
+    <form id="regForm" autocomplete="off">
+      <div class="form-group"><label><i class="fas fa-user"></i> Username</label>
+        <input type="text" id="username" required placeholder="e.g. john_chan" pattern="[a-zA-Z0-9_]{3,30}">
+        <small style="color:#7F8C8D;font-size:12px">Letters, numbers, underscores (3-30 chars)</small></div>
+      <div class="form-group"><label><i class="fas fa-id-card"></i> Display Name</label>
+        <input type="text" id="display_name" required placeholder="e.g. Chan Tai Man"></div>
+      <div class="form-group"><label><i class="fas fa-school"></i> Class</label>
+        <select id="class_name"><option>S6A</option><option>S6B</option><option>S6C</option><option>S6D</option><option>S5A</option><option>S5B</option><option>S5C</option><option>S5D</option></select></div>
+      <div class="form-group"><label><i class="fas fa-lock"></i> Password</label>
+        <input type="password" id="password" required placeholder="At least 6 characters" minlength="6"></div>
+      <div class="form-group"><label><i class="fas fa-lock"></i> Confirm Password</label>
+        <input type="password" id="password2" required placeholder="Type password again"></div>
+      <button type="submit" class="btn btn-success btn-block"><i class="fas fa-user-plus"></i> Create Account</button>
+    </form>
+    <p style="text-align:center;margin-top:16px;font-size:14px">Already have an account? <a href="login.html" style="color:#4A6FA5;font-weight:600">Log in here</a></p>
+  </div>
+</div>
+<script>
+document.getElementById('regForm').addEventListener('submit', async(e)=>{
+    e.preventDefault();
+    const err=document.getElementById('errorMsg'),suc=document.getElementById('successMsg');
+    err.style.display='none';suc.style.display='none';
+    const body={username:document.getElementById('username').value,display_name:document.getElementById('display_name').value,
+        class_name:document.getElementById('class_name').value,password:document.getElementById('password').value,
+        password2:document.getElementById('password2').value};
+    const resp=await fetch('/grace/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await resp.json();
+    if(data.ok){
+        suc.innerHTML='<i class="fas fa-check-circle"></i> Account created! <a href="login.html" style="color:#1a9555;font-weight:600">Go to Login</a>';
+        suc.style.display='block';document.getElementById('regForm').style.display='none';
+    } else {err.innerHTML='<i class="fas fa-exclamation-circle"></i> '+data.error;err.style.display='block';}
+});
+</script>
+</body></html>

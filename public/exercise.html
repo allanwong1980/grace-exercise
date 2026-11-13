@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Pronoun Referencing Practice</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<nav class="topnav" id="topnav"></nav>
+<div class="exercise-wrapper" id="app"><div style="text-align:center;padding:60px"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#4A6FA5"></i><p>Loading...</p></div></div>
+<script>
+const B='/grace';
+let DATA=null,current=1,answered=new Set(),TOTAL=25,SUBMITTED=false,ME=null;
+
+async function init(){
+    const meResp=await fetch(B+'/api/me');ME=await meResp.json();
+    if(!ME.loggedIn){window.location.href=B+'/login.html';return;}
+    buildNav(ME);
+    const resp=await fetch(B+'/api/exercise-data');DATA=await resp.json();
+    if(!DATA.ok)return;
+    TOTAL=DATA.totalQ;SUBMITTED=!!DATA.isSubmitted;
+    Object.keys(DATA.saved).forEach(k=>answered.add(parseInt(k)));
+    render();
+}
+
+function buildNav(me){
+    document.getElementById('topnav').innerHTML=
+    '<div class="nav-left"><a href="'+(me.role==='admin'?B+'/admin.html':B+'/dashboard.html')+'" class="nav-brand"><i class="fas fa-book-open"></i> Pronoun Practice</a></div>'+
+    '<div class="nav-right"><span class="nav-user"><i class="fas fa-user-circle"></i> '+esc(me.displayName)+'</span>'+
+    (me.role==='admin'?'<a href="'+B+'/admin.html" class="nav-link">Dashboard</a>':
+    '<a href="'+B+'/exercise.html" class="nav-link">Exercise</a><a href="'+B+'/dashboard.html" class="nav-link">My Results</a>')+
+    '<a href="'+B+'/messages.html" class="nav-link"><i class="fas fa-envelope"></i><span id="unreadBadge"></span></a>'+
+    '<a href="#" class="nav-link nav-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></div>';
+    fetch(B+'/api/unread-count').then(r=>r.json()).then(d=>{if(d.count>0)document.getElementById('unreadBadge').innerHTML='<span class="badge">'+d.count+'</span>';});
+}
+async function logout(){await fetch(B+'/api/logout',{method:'POST'});window.location.href=B+'/login.html';}
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+
+function render(){
+    const Q=DATA.questions;
+    let dotsHtml='';
+    for(let i=1;i<=TOTAL;i++) dotsHtml+='<button class="dot '+(i===1?'active':'')+' '+(answered.has(i)?'answered':'')+'" onclick="goTo('+i+')" title="Q'+i+'">'+i+'</button>';
+    let cardsHtml='';
+    for(let qn=1;qn<=TOTAL;qn++){
+        const q=Q[qn]; const s=DATA.saved[qn]||{};
+        const badges={standard:'Pronoun Reference',this_idea:'"This" = Whole Idea',that_those:'"That/Those" = Comparison',former_latter:'Former &amp; Latter'};
+        let ansHtml='';
+        if(q.type==='former_latter'){
+            ansHtml='<div class="answer-group"><label>The former refers to:</label><input type="text" class="answer-input" id="ans_'+qn+'_former" data-q="'+qn+'" data-part="former" placeholder="Type your answer..." value="'+esc(s.answer||'')+'" '+(SUBMITTED?'disabled':'')+'></div>'+
+            '<div class="answer-group"><label>The latter refers to:</label><input type="text" class="answer-input" id="ans_'+qn+'_latter" data-q="'+qn+'" data-part="latter" placeholder="Type your answer..." value="'+esc(s.answer2||'')+'" '+(SUBMITTED?'disabled':'')+'></div>';
+        } else {
+            ansHtml='<div class="answer-group"><input type="text" class="answer-input" id="ans_'+qn+'" data-q="'+qn+'" placeholder="Type your answer..." value="'+esc(s.answer||'')+'" '+(SUBMITTED?'disabled':'')+'></div>';
+        }
+        let verifyHtml='';
+        if(q.verify_sentence) verifyHtml='<div class="verify-box" id="verify_'+qn+'"><div class="verify-label"><i class="fas fa-check-double"></i> Step 4 — Verify</div><div class="verify-sentence" data-original="'+esc(q.verify_sentence)+'">'+q.verify_sentence+'</div></div>';
+        let rightHtml=buildRightPanel(q,qn,s);
+        cardsHtml+='<div class="question-card" id="q'+qn+'" style="display:'+(qn===1?'flex':'none')+'"><div class="q-left"><div class="q-number">Question '+qn+'</div><div class="q-type-badge">'+(badges[q.type]||'')+'</div><div class="passage-box"><div class="passage-label"><i class="fas fa-align-left"></i> Read the passage:</div><div class="passage-text">'+q.passage+'</div></div><div class="question-box"><div class="question-label"><i class="fas fa-question-circle"></i> '+q.question+'</div>'+ansHtml+verifyHtml+'</div><div class="save-status" id="ss_'+qn+'"></div></div><div class="q-right">'+rightHtml+'</div></div>';
+    }
+    let submitBtn=SUBMITTED?'<a href="'+B+'/dashboard.html" class="btn btn-primary"><i class="fas fa-chart-bar"></i> View My Results</a>'
+        :'<button class="btn btn-success" onclick="submitAll()"><i class="fas fa-paper-plane"></i> Submit All Answers</button>';
+    document.getElementById('app').innerHTML=
+      '<div class="progress-bar-container"><div class="progress-info"><span id="pText">Question 1 of '+TOTAL+'</span><span id="aCount">'+answered.size+'/'+TOTAL+' answered</span></div><div class="progress-bar"><div class="progress-fill" id="pFill" style="width:'+(100/TOTAL)+'%"></div></div><div class="question-dots">'+dotsHtml+'</div></div>'+
+      '<div class="question-stage">'+cardsHtml+'</div>'+
+      '<div class="exercise-nav"><button class="btn btn-secondary" id="btnPrev" onclick="prev()" disabled><i class="fas fa-arrow-left"></i> Previous</button><div class="nav-center">'+submitBtn+'</div><button class="btn btn-secondary" id="btnNext" onclick="next()">Next <i class="fas fa-arrow-right"></i></button></div>'+
+      (SUBMITTED?'<div class="submitted-overlay"><div class="submitted-badge"><i class="fas fa-check-circle"></i> Already Submitted — Read-Only Mode</div></div>':'');
+    document.querySelectorAll('.answer-input').forEach(inp=>{let timer;inp.addEventListener('input',function(){updateVerify(parseInt(this.dataset.q));clearTimeout(timer);timer=setTimeout(()=>saveAnswer(this.dataset.q),800);});});
+    document.querySelectorAll('.step-select').forEach(sel=>{sel.addEventListener('change',function(){saveAnswer(this.dataset.q);});});
+    document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')prev();if(e.key==='ArrowRight')next();});
+    for(let qn=1;qn<=TOTAL;qn++) updateVerify(qn);
+}
+
+function buildRightPanel(q,qn,s){
+    if(q.type==='standard'){
+        return '<div class="steps-guide"><h3><i class="fas fa-shoe-prints"></i> Follow the Steps</h3>'+
+        '<div class="step-card step-1"><div class="step-num">Step 1</div><div class="step-title">Is the pronoun singular or plural?</div><select class="step-select" id="step1_'+qn+'" data-q="'+qn+'" '+(SUBMITTED?'disabled':'')+'><option value="">— Select —</option><option value="singular" '+((s.step1_answer||'')==='singular'?'selected':'')+'>Singular</option><option value="plural" '+((s.step1_answer||'')==='plural'?'selected':'')+'>Plural</option></select></div>'+
+        '<div class="step-card step-2"><div class="step-num">Step 2</div><div class="step-title">Person, thing, or animal?</div><select class="step-select" id="step2_'+qn+'" data-q="'+qn+'" '+(SUBMITTED?'disabled':'')+'><option value="">— Select —</option><option value="person" '+((s.step2_answer||'')==='person'?'selected':'')+'>Person</option><option value="thing" '+((s.step2_answer||'')==='thing'?'selected':'')+'>Thing</option><option value="animal" '+((s.step2_answer||'')==='animal'?'selected':'')+'>Animal</option></select></div>'+
+        '<div class="step-card step-hint"><div class="step-num"><i class="fas fa-lightbulb"></i></div><div class="hint-content"><strong>Singular</strong><ul><li>"It" => one thing/animal</li><li>"He/She" => one person</li></ul><strong>Plural</strong><ul><li>"They/Them/These" => more than one</li><li>Noun often ends with "s"</li></ul></div></div>'+
+        '<div class="step-card step-3"><div class="step-num">Step 3</div><div class="step-title">Circle all nouns that match.</div><p class="step-note">Look at <span class="noun-demo">highlighted nouns</span> in the passage.</p></div>'+
+        '<div class="step-card step-4"><div class="step-num">Step 4</div><div class="step-title">Put your answer back. Does it make sense?</div><p class="step-note">Check the verification box.</p></div></div>';
+    }
+    if(q.type==='this_idea') return '<div class="steps-guide"><h3><i class="fas fa-lightbulb"></i> Tip: "This"</h3><div class="tip-box"><p><strong>"This"</strong> often refers to a <em>whole idea or situation</em>.</p><p>Look at the sentence(s) <strong>before</strong> "This" and summarise the idea.</p><div class="tip-example"><strong>Example:</strong><br>"The school banned plastic bottles. <em>This</em> helped reduce waste."<br>= the fact that the school banned plastic bottles</div></div></div>';
+    if(q.type==='that_those') return '<div class="steps-guide"><h3><i class="fas fa-balance-scale"></i> Tip: "That" / "Those"</h3><div class="tip-box"><p><strong>"That"</strong> = <em>singular</em> noun being compared.</p><p><strong>"Those"</strong> = <em>plural</em> noun being compared.</p><div class="tip-example"><strong>Example 1:</strong><br>"The quality of SCMP is higher than <em>that</em> of Next Magazine."<br>= <strong>the quality</strong></div><div class="tip-example"><strong>Example 2:</strong><br>"Birth rates in H.K. are lower than <em>those</em> in India."<br>= <strong>birth rates</strong></div></div></div>';
+    if(q.type==='former_latter') return '<div class="steps-guide"><h3><i class="fas fa-arrows-alt-h"></i> Tip: Former / Latter</h3><div class="tip-box"><p>When two things are mentioned:</p><ul><li><strong>"The former"</strong> = the <em>first</em> thing</li><li><strong>"The latter"</strong> = the <em>second</em> thing</li></ul><div class="tip-example"><strong>Example:</strong><br>"Some prefer <u>tea</u>, others prefer <u>coffee</u>."<br>the former = <strong>tea</strong><br>the latter = <strong>coffee</strong></div></div></div>';
+    return '';
+}
+
+function goTo(n){
+    document.querySelectorAll('.question-card').forEach(c=>c.style.display='none');
+    document.getElementById('q'+n).style.display='flex';
+    document.querySelectorAll('.dot').forEach(d=>d.classList.remove('active'));
+    document.querySelectorAll('.dot')[n-1].classList.add('active');
+    document.getElementById('pText').textContent='Question '+n+' of '+TOTAL;
+    document.getElementById('pFill').style.width=(n/TOTAL*100)+'%';
+    document.getElementById('btnPrev').disabled=(n===1);
+    document.getElementById('btnNext').disabled=(n===TOTAL);
+    current=n;updateVerify(n);
+}
+function prev(){if(current>1)goTo(current-1);}
+function next(){if(current<TOTAL)goTo(current+1);}
+
+function updateVerify(qn){
+    const vbox=document.getElementById('verify_'+qn);if(!vbox)return;
+    const vs=vbox.querySelector('.verify-sentence');
+    const orig=vs.getAttribute('data-original')||vs.innerHTML;
+    if(!vs.getAttribute('data-original'))vs.setAttribute('data-original',orig);
+    const fI=document.getElementById('ans_'+qn+'_former'),lI=document.getElementById('ans_'+qn+'_latter'),mI=document.getElementById('ans_'+qn);
+    if(fI&&lI){let t=orig;if(fI.value)t=t.replace('[the former = ____]',fI.value);if(lI.value)t=t.replace('[the latter = ____]',lI.value);vs.innerHTML=t;}
+    else if(mI&&mI.value) vs.innerHTML=orig.replace('____','<strong style="color:#2ecc71">'+esc(mI.value)+'</strong>');
+    else vs.innerHTML=orig;
+}
+function updateAnsweredUI(){
+    document.getElementById('aCount').textContent=answered.size+'/'+TOTAL+' answered';
+    document.querySelectorAll('.dot').forEach((d,i)=>{d.classList.toggle('answered',answered.has(i+1));});
+}
+async function saveAnswer(qnum){
+    if(SUBMITTED)return;
+    const body={qnum};
+    const fE=document.getElementById('ans_'+qnum+'_former'),lE=document.getElementById('ans_'+qnum+'_latter'),mE=document.getElementById('ans_'+qnum);
+    const s1=document.getElementById('step1_'+qnum),s2=document.getElementById('step2_'+qnum);
+    if(fE&&lE){body.answer=fE.value;body.answer2=lE.value;if(fE.value.trim()||lE.value.trim())answered.add(parseInt(qnum));}
+    else if(mE){body.answer=mE.value;if(mE.value.trim())answered.add(parseInt(qnum));else answered.delete(parseInt(qnum));}
+    if(s1)body.step1=s1.value;if(s2)body.step2=s2.value;
+    const st=document.getElementById('ss_'+qnum);
+    st.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving...';
+    try{const r=await fetch(B+'/api/save-answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();
+    st.innerHTML=d.ok?'<i class="fas fa-check" style="color:#2ecc71"></i> Saved':'<i class="fas fa-times" style="color:#e74c3c"></i> Error';}
+    catch(e){st.innerHTML='<i class="fas fa-exclamation-triangle" style="color:#e74c3c"></i> Network error';}
+    setTimeout(()=>st.innerHTML='',2000);updateAnsweredUI();
+}
+async function submitAll(){
+    if(answered.size<TOTAL){if(!confirm('You have only answered '+answered.size+'/'+TOTAL+' questions. Submit anyway?'))return;}
+    else{if(!confirm('Submit all answers? You cannot change them after.'))return;}
+    const r=await fetch(B+'/api/submit-exercise',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const d=await r.json();
+    if(d.ok){alert('Submitted! Score: '+d.score+'/'+d.total);window.location.href=B+'/dashboard.html';}
+    else alert('Error: '+(d.error||'Unknown'));
+}
+init();
+</script>
+</body></html>
