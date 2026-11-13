@@ -40,7 +40,7 @@ document.getElementById('loginForm').addEventListener('submit', async(e)=>{
     e.preventDefault();
     const errDiv=document.getElementById('errorMsg');
     errDiv.style.display='none';
-    const resp=await fetch('/grace/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
+    const resp=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({username:document.getElementById('username').value,password:document.getElementById('password').value})});
     const data=await resp.json();
     if(data.ok){window.location.href=data.redirect;}

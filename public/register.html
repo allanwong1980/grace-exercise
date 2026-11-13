@@ -48,7 +48,7 @@ document.getElementById('regForm').addEventListener('submit', async(e)=>{
     const body={username:document.getElementById('username').value,display_name:document.getElementById('display_name').value,
         class_name:document.getElementById('class_name').value,password:document.getElementById('password').value,
         password2:document.getElementById('password2').value};
-    const resp=await fetch('/grace/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const resp=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const data=await resp.json();
     if(data.ok){
         suc.innerHTML='<i class="fas fa-check-circle"></i> Account created! <a href="login.html" style="color:#1a9555;font-weight:600">Go to Login</a>';
